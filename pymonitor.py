@@ -222,11 +222,11 @@ class PyMonitorMainWindow(object):
     def __init__(self, MainWindow, *args, **kwargs):
         self.serial = None
         self.setup_ui(MainWindow)
-        MainWindow.setFixedSize(1146, 1131)
+#        MainWindow.setFixedSize(1000, 775)
 
     def setup_ui(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1146, 1131)
+        MainWindow.resize(1146, 1031)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
 
@@ -236,12 +236,14 @@ class PyMonitorMainWindow(object):
         self.plotWidget = QtWidgets.QVBoxLayout(self.plotLayoutWidget)
         self.plotWidget.setContentsMargins(1, 1, 1, 1)
         self.plotWidget.setObjectName("plot_widget")
+        spacerItem = QtWidgets.QSpacerItem(20, 245, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
 
         self.plot_canvas = PlotCanvas(self, parent=None, width=6, height=5)
         toolbar = NavigationToolbar2QT(self.plot_canvas, self.centralwidget)
 
         self.plotWidget.addWidget(toolbar)
         self.plotWidget.addWidget(self.plot_canvas)
+        self.plotWidget.addItem(spacerItem)
 
         self.horizontalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
         self.horizontalLayoutWidget.setGeometry(QtCore.QRect(10, 590, 671, 51))
@@ -281,7 +283,8 @@ class PyMonitorMainWindow(object):
 
         # Define text box
         self.textBox = QtWidgets.QTextEdit(self.centralwidget)
-        self.textBox.setGeometry(QtCore.QRect(10, 670, 1101, 351))
+#        self.textBox.setGeometry(QtCore.QRect(10, 670, 1101, 351))
+        self.textBox.setGeometry(QtCore.QRect(10, 670, 1101, 251))
         self.textBox.setObjectName("textBox")
 
         # Define cursor in text box
@@ -320,19 +323,19 @@ class PyMonitorMainWindow(object):
         self.gridLayout.addWidget(self.pushButton_8, 1, 2, 1, 1)
 
         self.pushButton_9 = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton_9.setGeometry(QtCore.QRect(80, 1040, 101, 41))
+        self.pushButton_9.setGeometry(QtCore.QRect(80, 950, 101, 41))
         self.pushButton_9.setObjectName("pushButton_9")
 
         self.pushButton_10 = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton_10.setGeometry(QtCore.QRect(190, 1040, 101, 41))
+        self.pushButton_10.setGeometry(QtCore.QRect(190, 950, 101, 41))
         self.pushButton_10.setObjectName("pushButton_10")
 
         self.pushButton_11 = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton_11.setGeometry(QtCore.QRect(300, 1040, 101, 41))
+        self.pushButton_11.setGeometry(QtCore.QRect(300, 950, 101, 41))
         self.pushButton_11.setObjectName("pushButton_11")
 
         self.pushButton_12 = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton_12.setGeometry(QtCore.QRect(410, 1040, 101, 41))
+        self.pushButton_12.setGeometry(QtCore.QRect(410, 950, 101, 41))
         self.pushButton_12.setObjectName("pushButton_12")
 
         self.label_image = QtWidgets.QLabel(self.centralwidget)
@@ -341,7 +344,7 @@ class PyMonitorMainWindow(object):
                                                        aspectRatioMode=QtCore.Qt.KeepAspectRatio,
                                                        transformMode=QtCore.Qt.SmoothTransformation)
         self.label_image.setPixmap(QtGui.QPixmap.fromImage(self.image_profile))
-        self.label_image.setGeometry(QtCore.QRect(20, 1040, 51, 41))
+        self.label_image.setGeometry(QtCore.QRect(20, 950, 51, 41))
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
