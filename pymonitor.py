@@ -21,7 +21,6 @@ from libs import WorkerThreading
 from libs import Logger
 
 class PlotCanvas(FigureCanvas):
-
     def __init__(self, *args, **kwargs):
         self.ani = None
         self.serial = None
@@ -29,8 +28,13 @@ class PlotCanvas(FigureCanvas):
         self.write = False
         self.addition_analysis = False
         self.is_plotting = False
+        self.add_data_1 = False
+        self.add_data_2 = False
+        self.add_data_3 = False
+        self.add_data_4 = False
+        self.current_channel = 'chan1'
 
-        self.scale_factor = 1
+        self.scale_factor = float(2.048/32784)
 
         self.current_time = 0
         self.time_iter = self.run_time()
@@ -39,23 +43,26 @@ class PlotCanvas(FigureCanvas):
         self.analysis = AnalysisCollection()
         self.avg_data = Deque(np.zeros(100))
         self.stdev_data = Deque(np.zeros(100))
-        self.ydata = Deque(np.zeros(100))
+        self.ydata_chan1 = Deque(np.zeros(100))
+        self.ydata_chan2 = Deque(np.zeros(100))
+        self.ydata_chan3 = Deque(np.zeros(100))
+        self.ydata_chan4 = Deque(np.zeros(100))
         self.tdata = Deque(np.arange(0, 100))
         self.fig = Figure(figsize=(kwargs['width'], kwargs['height']), dpi=120)
-        self.axes_top = self.fig.add_subplot(211, autoscalex_on=True)
-        self.axes_bot = self.fig.add_subplot(212, autoscalex_on=True)
+        self.axes_top = self.fig.add_subplot(211, autoscaley_on=True)
+        self.axes_bot = self.fig.add_subplot(212, autoscaley_on=True)
 
         FigureCanvas.__init__(self, self.fig)
         FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
 
         self.lines = Line2D(self.tdata.to_numpy(),
-                            self.ydata.to_numpy(),
+                            self.get_chan('chan1').to_numpy(),
                             color='xkcd:sky blue',
                             marker='o',
                             linewidth=0)
         self.axes_top.add_line(self.lines)
-        self.axes_top.set_ylim(0, 1025)
+        self.axes_top.set_ylim(0, 2.10)
         self.axes_top.set_xlim(0, 100)
         self.axes_top.grid(True)
 
@@ -65,7 +72,7 @@ class PlotCanvas(FigureCanvas):
                                 marker='o',
                                 linewidth=0)
         self.axes_bot.add_line(self.avg_lines)
-        self.axes_bot.set_ylim(0, 1025)
+        self.axes_bot.set_ylim(0, 2.1)
         self.axes_bot.set_xlim(0, 100)
 
         self.axes_bot.grid(True)
@@ -97,13 +104,38 @@ class PlotCanvas(FigureCanvas):
 
     def unpack_data(self, data):
         word_1 = int(data, 16) & int('FFFF', 16)
-#        word_2 = int(data, 16) & int('FFFF0000', 16)
-#        word_3 = int(data, 16) & int('FFFF00000000', 16)
-#        word_4 = int(data, 16) & int('FFFF000000000000', 16)
+        word_2 = int(data, 16) & int('FFFF0000', 16)
+        word_3 = int(data, 16) & int('FFFF00000000', 16)
+        word_4 = int(data, 16) & int('FFFF000000000000', 16)
 
-        return word_1 #, word_2, word_3, word_4
+        return word_1, word_2, word_3, word_4
 
+    def add_data(self, channel):
+        if channel ==  'chan1':
+            self.add_data_1 ^= True
+        if channel ==  'chan2':
+            self.add_data_2 ^= True
+        if channel ==  'chan3':
+            self.add_data_3 ^= True
+        if channel ==  'chan4':
+            self.add_data_4 ^= True
+        else:
+            pass
 
+    def get_chan(self, channel):
+        if channel ==  'chan1':
+            return self.ydata_chan1
+        if channel ==  'chan2':
+            return self.ydata_chan2
+        if channel ==  'chan3':
+            return self.ydata_chan3
+        if channel ==  'chan4':
+            return self.ydata_chan4
+        else:
+            return self.ydata_chan1
+
+    def set_chan(self, channel):
+        self.current_channel = channel
 
     def _get_data(self, command):
         try:
@@ -112,17 +144,29 @@ class PlotCanvas(FigureCanvas):
 
             if self.serial.serial.in_waiting > 0:
                 data = self.serial.read()
-                data = self.unpack_data(data)
+                data1, data2, data3, data4  = self.unpack_data(data)
 
-                data = self.scale_factor*float(data)
-                self.ydata.shift(data)
+
+                data = self.scale_factor*float(data1)
+                self.ydata_chan1.shift(data)
+
+                data = self.scale_factor * float(data2)
+                self.ydata_chan2.shift(data)
+
+                data = self.scale_factor * float(data3)
+                self.ydata_chan3.shift(data)
+
+                data = self.scale_factor * float(data4)
+                self.ydata_chan4.shift(data)
+
+#                self.get_chan(self.current_channel).shift(data)
             else:
                 pass
 
             self.current_time = next(self.time_iter)
             self.tdata.shift(command)
 
-            self.lines.set_data(self.tdata.to_numpy(), self.ydata.to_numpy()),
+            self.lines.set_data(self.tdata.to_numpy(), self.get_chan(self.current_channel).to_numpy()),
             self.axes_top.set_xlim(self.tdata.to_numpy().min(), self.tdata.to_numpy().max())
             self.axes_bot.set_xlim(self.tdata.to_numpy().min(), self.tdata.to_numpy().max())
 
@@ -136,7 +180,7 @@ class PlotCanvas(FigureCanvas):
             print('Serial Exception: Error reading port.')
 
     def _analysis_rolling_average(self):
-        avg_data, stdev = self.analysis.rolling_average(self.ydata.to_numpy()[-11:-1])
+        avg_data, stdev = self.analysis.rolling_average(self.get_chan(self.current_channel).to_numpy()[-11:-1])
 
         self.avg_data.shift(avg_data)
         self.stdev_data.shift(stdev)
@@ -152,7 +196,7 @@ class PlotCanvas(FigureCanvas):
         self.avg_lines.set_data(self.tdata.to_numpy(), self.avg_data.to_numpy()),
 
     def _auto_correlation(self):
-        auto_correlation_data = self.analysis.auto_correlation(self.ydata.to_numpy()[-11:-1])
+        auto_correlation_data = self.analysis.auto_correlation(self.get_chan(self.current_channel).to_numpy()[-11:-1])
 
         self.avg_data.shift(auto_correlation_data)
         self.axes_bot.set_ylim(-1, 1)
@@ -175,7 +219,7 @@ class PlotCanvas(FigureCanvas):
         try:
             self.ani = animation.FuncAnimation(self.fig,
                                                self._refresh,
-                                               interval=250,
+                                               interval=500,
                                                blit=False,
                                                repeat=False)
             self.ani.running = True
@@ -363,8 +407,11 @@ class PyMonitorMainWindow(object):
 
         # Button Hooks
         self.pushButton.clicked.connect(self.plot_canvas._write_data)
-        self.pushButton_5.clicked.connect(lambda: self.plot_canvas._set_analysis_function('rolling-average'))
-        self.pushButton_6.clicked.connect(lambda: self.plot_canvas._set_analysis_function('auto_correlation'))
+        self.pushButton_2.clicked.connect(lambda: self.plot_canvas.set_chan('chan1'))
+        self.pushButton_3.clicked.connect(lambda: self.plot_canvas.set_chan('chan2'))
+        self.pushButton_4.clicked.connect(lambda: self.plot_canvas.set_chan('chan3'))
+        self.pushButton_5.clicked.connect(lambda: self.plot_canvas.set_chan('chan4'))
+        self.pushButton_6.clicked.connect(lambda: self.plot_canvas._set_analysis_function('rolling-average'))
         self.pushButton_8.clicked.connect(lambda: self.plot_canvas.set_scale_factor(self.lineEdit_2.text()))
         self.pushButton_9.clicked.connect(self.connect)
         self.pushButton_10.clicked.connect(self.plot_canvas.on_start_button_clicked)
@@ -420,11 +467,11 @@ class PyMonitorMainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.pushButton.setText(_translate("MainWindow", "Record Data"))
-        self.pushButton_2.setText(_translate("MainWindow", "Option 2"))
-        self.pushButton_3.setText(_translate("MainWindow", "Option 3"))
-        self.pushButton_4.setText(_translate("MainWindow", "Option 4"))
-        self.pushButton_5.setText(_translate("MainWindow", "Rolling Average"))
-        self.pushButton_6.setText(_translate("MainWindow", "Autocorrelation"))
+        self.pushButton_2.setText(_translate("MainWindow", "Data 1"))
+        self.pushButton_3.setText(_translate("MainWindow", "Data 2"))
+        self.pushButton_4.setText(_translate("MainWindow", "Data 3"))
+        self.pushButton_5.setText(_translate("MainWindow", "Data 4"))
+        self.pushButton_6.setText(_translate("MainWindow", "Rolling Average"))
         self.label.setText(_translate("MainWindow", "Scale X"))
         self.label_2.setText(_translate("MainWindow", "Scale Y"))
         self.pushButton_7.setText(_translate("MainWindow", "Set"))
